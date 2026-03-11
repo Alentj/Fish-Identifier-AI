@@ -13,8 +13,28 @@ app = Flask(__name__)
 os.makedirs("static/uploads", exist_ok=True)
 
 # load class names from dataset
-dataset = datasets.ImageFolder("dataset/train")
-classes = dataset.classes
+classes = [
+    "anchovy",
+    "barracuda",
+    "catfish",
+    "croaker",
+    "grouper",
+    "karimeen",
+    "mackerel",
+    "milkfish",
+    "pomfret",
+    "ribbon_fish",
+    "sardine",
+    "seer_fish",
+    "shark",
+    "silver_belly",
+    "sole_fish",
+    "stingray",
+    "threadfin_bream",
+    "tilapia",
+    "trevally",
+    "tuna"
+]
 
 # load trained model
 model = models.mobilenet_v2(weights=None)

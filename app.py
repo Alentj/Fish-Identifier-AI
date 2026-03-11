@@ -1,39 +1,24 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import transforms, models, datasets
-from flask import Flask, render_template, request
+from torchvision import transforms, models
+from flask import Flask, render_template, request, jsonify
 from PIL import Image
 import os
 from fish_info import fish_data
 
 app = Flask(__name__)
 
-# make upload folder
-os.makedirs("static/uploads", exist_ok=True)
+# create upload folder
+UPLOAD_FOLDER = "static/uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# load class names from dataset
+# fish classes
 classes = [
-    "anchovy",
-    "barracuda",
-    "catfish",
-    "croaker",
-    "grouper",
-    "karimeen",
-    "mackerel",
-    "milkfish",
-    "pomfret",
-    "ribbon_fish",
-    "sardine",
-    "seer_fish",
-    "shark",
-    "silver_belly",
-    "sole_fish",
-    "stingray",
-    "threadfin_bream",
-    "tilapia",
-    "trevally",
-    "tuna"
+"anchovy","barracuda","catfish","croaker","grouper",
+"karimeen","mackerel","milkfish","pomfret","ribbon_fish",
+"sardine","seer_fish","shark","silver_belly","sole_fish",
+"stingray","threadfin_bream","tilapia","trevally","tuna"
 ]
 
 # load trained model
@@ -43,7 +28,7 @@ model.classifier[1] = nn.Linear(model.last_channel, len(classes))
 model.load_state_dict(torch.load("fish_model.pth", map_location="cpu"))
 model.eval()
 
-# image transform
+# image preprocessing
 transform = transforms.Compose([
     transforms.Resize((224,224)),
     transforms.ToTensor(),
@@ -54,9 +39,9 @@ transform = transforms.Compose([
 ])
 
 # prediction function
-def predict_image(path):
+def predict_image(image_path):
 
-    img = Image.open(path).convert("RGB")
+    img = Image.open(image_path).convert("RGB")
     img = transform(img).unsqueeze(0)
 
     with torch.no_grad():
@@ -82,16 +67,17 @@ def index():
 
     if request.method=="POST":
 
-        file=request.files["image"]
+        file=request.files.get("image")
 
-        img_path=os.path.join("static/uploads",file.filename)
+        if file and file.filename!="":
 
-        file.save(img_path)
+            img_path=os.path.join(UPLOAD_FOLDER,file.filename)
+            file.save(img_path)
 
-        prediction,confidence=predict_image(img_path)
+            prediction,confidence=predict_image(img_path)
 
-        if prediction in fish_data:
-            info=fish_data[prediction]
+            if prediction in fish_data:
+                info=fish_data[prediction]
 
     return render_template(
         "index.html",
@@ -101,8 +87,20 @@ def index():
         info=info
     )
 
-import os
+
+@app.route("/feedback", methods=["POST"])
+def feedback():
+
+    data=request.json
+    result=data.get("result")
+
+    with open("feedback_log.txt","a") as f:
+        f.write(result+"\n")
+
+    return jsonify({"status":"saved"})
+
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+
+    port=int(os.environ.get("PORT",5000))
+    app.run(host="0.0.0.0",port=port)
